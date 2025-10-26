@@ -1,0 +1,61 @@
+name: Generate Gource History Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      generate:
+        description: "Generate Gource history video"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate_gource:
+    name: Generate Gource History Video
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.generate == 'true' }}
+
+    steps:
+      # 🌀 1. Checkout full repo history (important for Gource)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full git history needed for Gource
+
+      # 🧰 2. Install dependencies
+      - name: Install Gource and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gource ffmpeg xvfb xauth
+
+      # 🎥 3. Generate Gource video
+      - name: Generate Gource video
+        run: |
+          echo "Generating gource.mp4..."
+          xvfb-run -a gource \
+            --hide mouse,progress \
+            --seconds-per-day 1 \
+            --auto-skip-seconds 0.1 \
+            --multi-sampling \
+            --stop-at-end \
+            --output-framerate 30 \
+            --title "${{ github.repository }}" \
+            --highlight-users \
+            -1280x720 -o - \
+            | ffmpeg -y -r 30 -f image2pipe -vcodec ppm -i - \
+              -vcodec libx264 -preset ultrafast -pix_fmt yuv420p \
+              -crf 18 -threads 0 -bf 0 gource.mp4
+
+          echo "✅ Gource video generated: gource.mp4"
+
+      # 💾 4. Commit & push the video
+      - name: Commit Gource video
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gource.mp4
+          git commit -m "Added Gource history video" || echo "No changes to commit"
+          git push
