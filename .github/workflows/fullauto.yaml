@@ -43,7 +43,7 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
-      - name: Create issue and upload Gource video
+      - name: Create issue and attach Gource video
         if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
         id: upload
         run: |
@@ -56,22 +56,21 @@ jobs:
 
           echo "📝 Created issue at: $ISSUE_URL"
 
-          echo "📎 Uploading gource.mp4 as attachment..."
-          COMMENT_BODY=$(gh issue comment "$ISSUE_URL" \
-            --body "Here is the generated Gource visualization video:" \
+          echo "📎 Attaching gource.mp4 to issue body..."
+          ISSUE_BODY=$(gh issue edit "$ISSUE_URL" \
+            --add-body "Here is the generated Gource visualization video:" \
             --attach gource.mp4 \
-            --repo ${{ github.repository }})
+            --repo ${{ github.repository }} \
+            --json body -q .body 2>/dev/null || true)
 
-          echo "$COMMENT_BODY" > comment_output.txt
+          echo "$ISSUE_BODY" > issue_output.txt
 
-          VIDEO_URL=$(grep -o 'https://github.com/user-attachments/assets/[a-zA-Z0-9-]*' comment_output.txt | head -n 1)
-          
+          VIDEO_URL=$(grep -o 'https://github.com/user-attachments/assets/[a-zA-Z0-9-]*' issue_output.txt | head -n 1)
+
           echo "📎 Extracted video URL: $VIDEO_URL"
           echo "$VIDEO_URL" > gource_video_url.txt
-
-          echo "ℹ️ Video link stored in gource_video_url.txt"
-          echo "🗂️ Issue link: $ISSUE_URL"
           echo "$ISSUE_URL" > gource_issue_link.txt
+          echo "✅ Saved URLs in gource_video_url.txt and gource_issue_link.txt"
 
       - name: Commit Gource video URL
         if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
