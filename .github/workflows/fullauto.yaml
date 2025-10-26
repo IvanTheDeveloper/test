@@ -1,4 +1,4 @@
-name: Update README with gource video
+name: Update README with gource video (with SHA)
 
 on:
   push:
@@ -6,37 +6,41 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write   # 👈 necesario para poder hacer commit/push al repo
+
 jobs:
   update-readme:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4   # versión más reciente
 
-      - name: Update README with githack URL
+      - name: Update README with githack production URL
         run: |
           OWNER="${GITHUB_REPOSITORY%%/*}"
           REPO="${GITHUB_REPOSITORY##*/}"
-          BRANCH="main"
+          SHA="${GITHUB_SHA}"
           FILE="gource.mp4"
-          URL="https://raw.githack.com/$OWNER/$REPO/$BRANCH/$FILE"
 
-          # Si quieres reemplazar entre markers:
+          URL="https://rawcdn.githack.com/$OWNER/$REPO/$SHA/$FILE"
+
+          echo "Generated URL: $URL"
+
           START="<!-- GOURCE-VIDEO-START -->"
           END="<!-- GOURCE-VIDEO-END -->"
 
           if grep -q "$START" README.md; then
-            # Reemplazar contenido entre markers
             sed -i "/$START/,/$END/c\\$START\n[Ver gource.mp4]($URL)\n$END" README.md
           else
-            # Agregar al final si no existen markers
             echo -e "\n$START\n[Ver gource.mp4]($URL)\n$END" >> README.md
           fi
 
-      - name: Commit changes
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git commit -m "Update gource.mp4 link in README" || echo "No changes to commit"
+          git commit -m "Update gource.mp4 link in README with commit SHA" || echo "No changes to commit"
           git push
