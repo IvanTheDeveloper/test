@@ -1,37 +1,39 @@
-name: Gource Video Generator
+name: Toggle variable
 
 on:
   workflow_dispatch:
-    inputs:
-      Generate_Gource_Video:
-        description: 'Generate Gource history Video File'
-        type: boolean
-        required: false
-
-permissions:
-  contents: write
 
 jobs:
-  Generate_Gource_Video:
-    name: Generate Gource History Video
+  toggle:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Generate Gource Video
-        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+      - name: Toggle VAR_FLAG
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
         run: |
-          echo "Generating Gource video from API..."
-          API_URL="https://api-gource.onrender.com/${{ github.repository_owner }}/${{ github.event.repository.name }}"
-          OUTPUT_FILE="gource.mp4"
-          curl -L $API_URL -o $OUTPUT_FILE
-          echo "✅ Gource video saved as $OUTPUT_FILE"
+          # Obtener valor actual
+          current=$(curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/$OWNER/$REPO/actions/variables/VAR_FLAG \
+            | jq -r .value)
 
-      - name: Commit Gource video
-        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gource.mp4
-          git commit -m "Added Gource history video"
-          git push
+          echo "Valor actual: $current"
+
+          # Alternar valor
+          if [ "$current" == "true" ]; then
+            new_value="false"
+          else
+            new_value="true"
+          fi
+
+          echo "Nuevo valor: $new_value"
+
+          # Actualizar variable
+          curl -s -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/$OWNER/$REPO/actions/variables/VAR_FLAG \
+            -d "{\"name\":\"VAR_FLAG\",\"value\":\"$new_value\"}"
