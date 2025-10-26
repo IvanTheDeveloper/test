@@ -1,0 +1,74 @@
+name: Gource Video Generator
+
+on:
+  workflow_dispatch:
+    inputs:
+      Generate_Gource_Video:
+        description: 'Generate Gource history Video File'
+        type: boolean
+        required: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  Generate_Gource_Video:
+    name: Generate Gource History Video
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Gource Video
+        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+        run: |
+          echo "🎬 Generating Gource video from API..."
+          API_URL="https://api-gource.onrender.com/${{ github.repository_owner }}/${{ github.event.repository.name }}"
+          OUTPUT_FILE="gource.mp4"
+          curl -L $API_URL -o $OUTPUT_FILE
+          echo "✅ Gource video saved as $OUTPUT_FILE"
+
+      - name: Install GitHub CLI
+        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+        run: |
+          sudo apt-get install -y jq
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+
+      - name: Authenticate GitHub CLI
+        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Upload video to an issue to get a public URL
+        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+        id: upload
+        run: |
+          echo "📤 Creating temporary issue for upload..."
+          ISSUE_NUMBER=$(gh issue create --title "Temporary Gource Upload" --body "Uploading gource.mp4" --repo ${{ github.repository }} --json number -q .number)
+          
+          echo "Uploading video as issue comment..."
+          COMMENT_JSON=$(gh issue comment $ISSUE_NUMBER --body "Here is the video:" --attach gource.mp4 --repo ${{ github.repository }} --json body -q .body)
+          
+          echo "$COMMENT_JSON" > comment.json
+          
+          # Extract the first asset URL from markdown
+          VIDEO_URL=$(grep -o 'https://github.com/user-attachments/assets/[a-zA-Z0-9-]*' comment.json | head -n 1)
+          
+          echo "📎 Extracted video URL: $VIDEO_URL"
+          echo "$VIDEO_URL" > gource_video_url.txt
+          
+          # Optional: close issue after upload
+          gh issue close $ISSUE_NUMBER --repo ${{ github.repository }} --comment "Video uploaded and issue closed automatically."
+
+      - name: Commit Gource video URL
+        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gource_video_url.txt
+          git commit -m "Added Gource video URL"
+          git push
