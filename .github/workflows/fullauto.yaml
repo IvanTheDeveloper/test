@@ -43,32 +43,41 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
-      - name: Upload video to an issue to get a public URL
+      - name: Create issue and upload Gource video
         if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
         id: upload
         run: |
-          echo "📤 Creating temporary issue for upload..."
-          ISSUE_NUMBER=$(gh issue create --title "Temporary Gource Upload" --body "Uploading gource.mp4" --repo ${{ github.repository }} --json number -q .number)
-          
-          echo "Uploading video as issue comment..."
-          COMMENT_JSON=$(gh issue comment $ISSUE_NUMBER --body "Here is the video:" --attach gource.mp4 --repo ${{ github.repository }} --json body -q .body)
-          
-          echo "$COMMENT_JSON" > comment.json
-          
-          # Extract the first asset URL from markdown
-          VIDEO_URL=$(grep -o 'https://github.com/user-attachments/assets/[a-zA-Z0-9-]*' comment.json | head -n 1)
+          echo "📤 Creating GitHub Issue for Gource video..."
+          ISSUE_URL=$(gh issue create \
+            --title "🎬 Gource Visualization - $(date +'%Y-%m-%d %H:%M:%S')" \
+            --body "Automatic Gource visualization upload for \`${{ github.repository }}\`." \
+            --repo ${{ github.repository }} \
+            | grep -Eo 'https://github.com/.*/issues/[0-9]+')
+
+          echo "📝 Created issue at: $ISSUE_URL"
+
+          echo "📎 Uploading gource.mp4 as attachment..."
+          COMMENT_BODY=$(gh issue comment "$ISSUE_URL" \
+            --body "Here is the generated Gource visualization video:" \
+            --attach gource.mp4 \
+            --repo ${{ github.repository }})
+
+          echo "$COMMENT_BODY" > comment_output.txt
+
+          VIDEO_URL=$(grep -o 'https://github.com/user-attachments/assets/[a-zA-Z0-9-]*' comment_output.txt | head -n 1)
           
           echo "📎 Extracted video URL: $VIDEO_URL"
           echo "$VIDEO_URL" > gource_video_url.txt
-          
-          # Optional: close issue after upload
-          gh issue close $ISSUE_NUMBER --repo ${{ github.repository }} --comment "Video uploaded and issue closed automatically."
+
+          echo "ℹ️ Video link stored in gource_video_url.txt"
+          echo "🗂️ Issue link: $ISSUE_URL"
+          echo "$ISSUE_URL" > gource_issue_link.txt
 
       - name: Commit Gource video URL
         if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gource_video_url.txt
-          git commit -m "Added Gource video URL"
+          git add gource_video_url.txt gource_issue_link.txt
+          git commit -m "Added Gource video and issue link"
           git push
