@@ -1,39 +1,7 @@
-name: Toggle variable
-
-on:
-  workflow_dispatch:
-
 jobs:
   toggle:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
     steps:
-      - name: Toggle VAR_FLAG
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-        run: |
-          # Obtener valor actual
-          current=$(curl -s \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/$OWNER/$REPO/actions/variables/VAR_FLAG \
-            | jq -r .value)
-
-          echo "Valor actual: $current"
-
-          # Alternar valor
-          if [ "$current" == "true" ]; then
-            new_value="false"
-          else
-            new_value="true"
-          fi
-
-          echo "Nuevo valor: $new_value"
-
-          # Actualizar variable
-          curl -s -X PATCH \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/$OWNER/$REPO/actions/variables/VAR_FLAG \
-            -d "{\"name\":\"VAR_FLAG\",\"value\":\"$new_value\"}"
+      - name: Alternar variable
+        run: echo "Aquí va el toggle"
