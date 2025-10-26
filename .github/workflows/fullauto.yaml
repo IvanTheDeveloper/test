@@ -1,46 +1,77 @@
-name: Update README with gource video (with SHA)
+name: Generate Gource video and update README
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
-  contents: write   # 👈 necesario para poder hacer commit/push al repo
+  contents: write
 
 jobs:
-  update-readme:
+  generate-video:
+    name: Generate and commit gource.mp4
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4   # versión más reciente
+        uses: actions/checkout@v4
 
-      - name: Update README with githack production URL
+      - name: Generate gource.mp4 via API
+        run: |
+          API_URL="https://api-gource.onrender.com/${{ github.repository_owner }}/${{ github.event.repository.name }}"
+          echo "Generating video from $API_URL"
+          curl -L "$API_URL" -o gource.mp4
+          ls -lh gource.mp4
+
+      - name: Commit and push gource.mp4
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gource.mp4
+          git commit -m "Add updated gource.mp4 video" || echo "No changes to commit"
+          git push
+
+  update-readme:
+    name: Update README with gource video link
+    runs-on: ubuntu-latest
+    needs: generate-video   # 👈 espera a que el video se genere y suba
+
+    steps:
+      - name: Checkout repository (latest commit)
+        uses: actions/checkout@v4
+
+      - name: Generate Githack URL and update README
         run: |
           OWNER="${GITHUB_REPOSITORY%%/*}"
           REPO="${GITHUB_REPOSITORY##*/}"
           SHA="${GITHUB_SHA}"
           FILE="gource.mp4"
-
           URL="https://rawcdn.githack.com/$OWNER/$REPO/$SHA/$FILE"
 
-          echo "Generated URL: $URL"
+          echo "📹 Generated Gource URL:"
+          echo "$URL"
 
           START="<!-- GOURCE-VIDEO-START -->"
           END="<!-- GOURCE-VIDEO-END -->"
 
-          if grep -q "$START" README.md; then
-            sed -i "/$START/,/$END/c\\$START\n[Ver gource.mp4]($URL)\n$END" README.md
-          else
-            echo -e "\n$START\n[Ver gource.mp4]($URL)\n$END" >> README.md
+          if [ ! -f README.md ]; then
+            echo "# $REPO" > README.md
           fi
 
-      - name: Commit and push changes
+          if grep -q "$START" README.md; then
+            echo "Updating existing GOURCE section..."
+            sed -i "/$START/,/$END/c\\$START\n[🎥 Ver gource.mp4]($URL)\n$END" README.md
+          else
+            echo "Adding new GOURCE section..."
+            echo -e "\n$START\n[🎥 Ver gource.mp4]($URL)\n$END" >> README.md
+          fi
+
+      - name: Commit and push README update
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git commit -m "Update gource.mp4 link in README with commit SHA" || echo "No changes to commit"
+          git diff --cached --quiet && echo "No changes to commit" || git commit -m "Update README with Gource video link"
           git push
