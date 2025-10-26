@@ -1,82 +1,42 @@
-name: Gource Video Generator
+name: Update README with gource video
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      Generate_Gource_Video:
-        description: 'Generate Gource history Video File'
-        type: boolean
-        required: false
-
-permissions:
-  contents: write
-  issues: write
 
 jobs:
-  Generate_Gource_Video:
-    name: Generate Gource History Video
+  update-readme:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Generate Gource Video
-        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+      - name: Update README with githack URL
         run: |
-          echo "🎬 Generating Gource video from API..."
-          API_URL="https://api-gource.onrender.com/${{ github.repository_owner }}/${{ github.event.repository.name }}"
-          OUTPUT_FILE="gource.mp4"
-          curl -L $API_URL -o $OUTPUT_FILE
-          echo "✅ Gource video saved as $OUTPUT_FILE"
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO="${GITHUB_REPOSITORY##*/}"
+          BRANCH="main"
+          FILE="gource.mp4"
+          URL="https://raw.githack.com/$OWNER/$REPO/$BRANCH/$FILE"
 
-      - name: Install GitHub CLI
-        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
+          # Si quieres reemplazar entre markers:
+          START="<!-- GOURCE-VIDEO-START -->"
+          END="<!-- GOURCE-VIDEO-END -->"
+
+          if grep -q "$START" README.md; then
+            # Reemplazar contenido entre markers
+            sed -i "/$START/,/$END/c\\$START\n[Ver gource.mp4]($URL)\n$END" README.md
+          else
+            # Agregar al final si no existen markers
+            echo -e "\n$START\n[Ver gource.mp4]($URL)\n$END" >> README.md
+          fi
+
+      - name: Commit changes
         run: |
-          sudo apt-get install -y jq
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install gh -y
-
-      - name: Authenticate GitHub CLI
-        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-
-      - name: Create issue and attach Gource video
-        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
-        id: upload
-        run: |
-          echo "📤 Creating GitHub Issue for Gource video..."
-          ISSUE_URL=$(gh issue create \
-            --title "🎬 Gource Visualization - $(date +'%Y-%m-%d %H:%M:%S')" \
-            --body "Automatic Gource visualization upload for \`${{ github.repository }}\`." \
-            --repo ${{ github.repository }} \
-            | grep -Eo 'https://github.com/.*/issues/[0-9]+')
-
-          echo "📝 Created issue at: $ISSUE_URL"
-
-          echo "📎 Attaching gource.mp4 to issue body..."
-          ISSUE_BODY=$(gh issue edit "$ISSUE_URL" \
-            --add-body "Here is the generated Gource visualization video:" \
-            --attach gource.mp4 \
-            --repo ${{ github.repository }} \
-            --json body -q .body 2>/dev/null || true)
-
-          echo "$ISSUE_BODY" > issue_output.txt
-
-          VIDEO_URL=$(grep -o 'https://github.com/user-attachments/assets/[a-zA-Z0-9-]*' issue_output.txt | head -n 1)
-
-          echo "📎 Extracted video URL: $VIDEO_URL"
-          echo "$VIDEO_URL" > gource_video_url.txt
-          echo "$ISSUE_URL" > gource_issue_link.txt
-          echo "✅ Saved URLs in gource_video_url.txt and gource_issue_link.txt"
-
-      - name: Commit Gource video URL
-        if: ${{ github.event.inputs.Generate_Gource_Video == 'true' }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gource_video_url.txt gource_issue_link.txt
-          git commit -m "Added Gource video and issue link"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Update gource.mp4 link in README" || echo "No changes to commit"
           git push
