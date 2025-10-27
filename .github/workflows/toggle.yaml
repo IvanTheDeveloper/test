@@ -3,8 +3,8 @@ name: Toggle variable
 on:
    workflow_dispatch:
       inputs:
-         Toggle_Variable:
-            description: 'Toggle repo variable (true/false) using name'
+         Var_Flag:
+            description: 'Toggle repo variable (true/false) using its name'
             type: string
             required: false
 
@@ -24,4 +24,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-        run: python .github/scripts/toggle.py ${{ github.event.inputs.Generate_Table_Of_Contents }}
+        run: python .github/scripts/toggle.py ${{ github.event.inputs.Var_Flag }}
