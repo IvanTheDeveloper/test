@@ -92,7 +92,7 @@ jobs:
           END="GOURCE-VIDEO-END"
           TEXT="$URL"
           sudo apt-get install -y python3
-          python .github/py_repo_tools/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
+          python .github/scripts/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
 
       - name: Pull previous commit and push changes
         run: |
