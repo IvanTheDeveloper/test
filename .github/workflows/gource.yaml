@@ -30,7 +30,7 @@ jobs:
         if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full git history needed for Gource
+          fetch-depth: 0
 
       - name: Install Gource and FFmpeg
         if: steps.check.outputs.should_run == 'true'
@@ -38,22 +38,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gource ffmpeg xvfb xauth
 
-      - name: Download contributor avatars
-        if: steps.check.outputs.should_run == 'true'
-        run: |
-          mkdir -p .gource/avatars
-          for user in $(curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/contributors | jq -r '.[].login'); do
-            avatar_url=$(curl -s https://api.github.com/users/$user | jq -r '.avatar_url')
-            wget -q "$avatar_url" -O ".gource/avatars/$user.jpg"
-          done
-
       - name: Generate Gource video
         if: steps.check.outputs.should_run == 'true'
         run: |
           xvfb-run -a gource \       
             --key \
             --highlight-users \
-            --user-image-dir .gource/avatars \
             --seconds-per-day 1 \
             --auto-skip-seconds 0.1 \
             --stop-at-end \
@@ -86,21 +76,10 @@ jobs:
     needs: generate_gource
     
     steps:
-      - name: Check if workflow should run
-        id: check
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ secrets.GOURCE }}" != "false" ]]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_run=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout repository (latest commit)
-        if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
 
       - name: Generate Githack URL and update README
-        if: steps.check.outputs.should_run == 'true'
         run: |
           OWNER="${{github.repository_owner}}"
           REPO="${{github.event.repository.name}}"
@@ -116,7 +95,6 @@ jobs:
           python .github/py_repo_tools/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
 
       - name: Pull previous commit and push changes
-        if: steps.check.outputs.should_run == 'true'
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
