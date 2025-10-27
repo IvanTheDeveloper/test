@@ -15,20 +15,31 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOURCE: ${{ secrets.GOURCE }}
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && env.GOURCE != 'false')
 
     steps:
+      - name: Check if workflow should run
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ secrets.GOURCE }}" != "false" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository
+        if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # full git history needed for Gource
 
       - name: Install Gource and FFmpeg
+        if: steps.check.outputs.should_run == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y gource ffmpeg xvfb xauth
 
       - name: Download contributor avatars
+        if: steps.check.outputs.should_run == 'true'
         run: |
           mkdir -p .gource/avatars
           for user in $(curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/contributors | jq -r '.[].login'); do
@@ -37,6 +48,7 @@ jobs:
           done
 
       - name: Generate Gource video
+        if: steps.check.outputs.should_run == 'true'
         run: |
           xvfb-run -a gource \       
             --key \
@@ -54,6 +66,7 @@ jobs:
               -crf 18 -threads 0 -bf 0 gource.mp4
 
       - name: Push changes
+        if: steps.check.outputs.should_run == 'true'
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
@@ -71,13 +84,23 @@ jobs:
     name: Update README with gource video link
     runs-on: ubuntu-latest
     needs: generate_gource
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && secrets.GOURCE != 'false')
     
     steps:
+      - name: Check if workflow should run
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ secrets.GOURCE }}" != "false" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository (latest commit)
+        if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
 
       - name: Generate Githack URL and update README
+        if: steps.check.outputs.should_run == 'true'
         run: |
           OWNER="${{github.repository_owner}}"
           REPO="${{github.event.repository.name}}"
@@ -93,6 +116,7 @@ jobs:
           python .github/py_repo_tools/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
 
       - name: Pull previous commit and push changes
+        if: steps.check.outputs.should_run == 'true'
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
