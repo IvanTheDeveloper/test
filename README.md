@@ -5,5 +5,5 @@
 
 
 <!-- GOURCE-VIDEO-START -->
-<video src="https://rawcdn.githack.com/IvanTheDeveloper/test/1dc492b72845b3e71f21ac82008d7895fb73efbd/gource.mp4"></video>
+https://rawcdn.githack.com/IvanTheDeveloper/test/1c538bb1b30272a8a3cbbfe9e43f5bc9adb08f9b/gource.mp4
 <!-- GOURCE-VIDEO-END -->
