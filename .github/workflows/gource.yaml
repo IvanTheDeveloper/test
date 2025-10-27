@@ -13,7 +13,9 @@ jobs:
   generate_gource:
     name: Generate Gource History Video
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && secrets.GOURCE != 'false')
+    env:
+      GOURCE: ${{ secrets.GOURCE }}
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && env.GOURCE != 'false')
 
     steps:
       - name: Checkout repository
