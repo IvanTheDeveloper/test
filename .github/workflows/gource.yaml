@@ -56,9 +56,13 @@ jobs:
       
       - name: Delete previous gource release if exists
         if: steps.check.outputs.should_run == 'true'
-        continue-on-error: true
         run: |
-          gh release delete gource-video --yes --cleanup-tag
+          if gh release view gource-video >/dev/null 2>&1; then
+            echo "Deleting existing release..."
+            gh release delete gource-video --yes --cleanup-tag
+          else
+            echo "No existing release found, skipping deletion."
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
