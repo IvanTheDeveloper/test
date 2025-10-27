@@ -75,8 +75,20 @@ jobs:
     needs: generate_gource
     
     steps:
-      - name: Checkout repository (latest commit)
+      - name: Checkout repository (with full history)
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify marker.py exists
+        run: |
+          if [ ! -f ".github/py_repo_tools/marker.py" ]; then
+            echo "ERROR: marker.py not found!"
+            ls -la .github/py_repo_tools/ || echo "Directory doesn't exist"
+            exit 1
+          fi
+          echo "marker.py found successfully"
 
       - name: Generate Githack URL and update README
         run: |
@@ -91,9 +103,9 @@ jobs:
           START="GOURCE-VIDEO-START"
           END="GOURCE-VIDEO-END"
           TEXT="$URL"
-          python .github/py_repo_tools/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
+          python3 .github/py_repo_tools/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
 
-      - name: Pull previous commit and push changes
+      - name: Pull and push changes
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
