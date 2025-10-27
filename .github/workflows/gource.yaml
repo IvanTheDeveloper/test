@@ -13,8 +13,6 @@ jobs:
   generate_gource:
     name: Generate Gource History Video
     runs-on: ubuntu-latest
-    env:
-      GOURCE: ${{ secrets.GOURCE }}
 
     steps:
       - name: Check if workflow should run
@@ -41,7 +39,8 @@ jobs:
       - name: Generate Gource video
         if: steps.check.outputs.should_run == 'true'
         run: |
-          xvfb-run -a gource \       
+          xvfb-run -a gource \
+            . \
             --key \
             --highlight-users \
             --seconds-per-day 1 \
