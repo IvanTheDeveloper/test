@@ -54,47 +54,12 @@ jobs:
               -vcodec libx264 -preset ultrafast -pix_fmt yuv420p \
               -crf 18 -threads 0 -bf 0 gource.mp4
 
-      - name: Push changes
-        if: steps.check.outputs.should_run == 'true'
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-          git add gource.mp4
-
-          if ! git diff --cached --quiet; then
-            git commit -m "Update gource history video"
-            git push "https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF_NAME}
-          else
-            echo "No changes to commit"
-          fi
-
-  update_readme:
-    name: Update README with gource video link
-    runs-on: ubuntu-latest
-    needs: generate_gource
-    
-    steps:
-      - name: Checkout repository (with full history)
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Verify marker.py exists
-        run: |
-          if [ ! -f ".github/py_repo_tools/marker.py" ]; then
-            echo "ERROR: marker.py not found!"
-            ls -la .github/py_repo_tools/ || echo "Directory doesn't exist"
-            exit 1
-          fi
-          echo "marker.py found successfully"
-
       - name: Generate Githack URL and update README
+        if: steps.check.outputs.should_run == 'true'
         run: |
           OWNER="${{github.repository_owner}}"
           REPO="${{github.event.repository.name}}"
-          COMMIT_SHA="${GITHUB_SHA}"
+          COMMIT_SHA="$(git rev-parse HEAD)"
           VIDEO_FILE="gource.mp4"
           URL="https://rawcdn.githack.com/$OWNER/$REPO/$COMMIT_SHA/$VIDEO_FILE"
           echo "Generated Gource URL: $URL"
@@ -105,16 +70,16 @@ jobs:
           TEXT="$URL"
           python3 .github/py_repo_tools/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
 
-      - name: Pull and push changes
+      - name: Push changes
+        if: steps.check.outputs.should_run == 'true'
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-          git add README.md
+          git add gource.mp4 README.md
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update gource history video"
-            git pull --rebase origin main
+            git commit -m "Update gource history video and README"
             git push "https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF_NAME}
           else
             echo "No changes to commit"
