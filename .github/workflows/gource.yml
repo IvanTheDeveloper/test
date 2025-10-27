@@ -1,7 +1,0 @@
-jobs:
-  toggle:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Alternar variable
-        run: echo "Aquí va el toggle"
