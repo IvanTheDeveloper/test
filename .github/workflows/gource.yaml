@@ -54,7 +54,7 @@ jobs:
               -vcodec libx264 -preset ultrafast -pix_fmt yuv420p \
               -crf 18 -threads 0 -bf 0 gource.mp4
 
-      - name: Push changes
+      - name: Push gource.mp4
         if: steps.check.outputs.should_run == 'true'
         run: |
           git config user.name "$GITHUB_ACTOR"
@@ -73,28 +73,36 @@ jobs:
     name: Update README with gource video link
     runs-on: ubuntu-latest
     needs: generate_gource
-    
+
     steps:
       - name: Checkout repository (latest commit)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest commit SHA
+        id: latest_sha
+        run: |
+          git fetch origin main
+          LATEST=$(git rev-parse origin/main)
+          echo "sha=$LATEST" >> $GITHUB_OUTPUT
 
       - name: Generate Githack URL and update README
         run: |
-          OWNER="${{github.repository_owner}}"
-          REPO="${{github.event.repository.name}}"
-          COMMIT_SHA="${GITHUB_SHA}"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
           VIDEO_FILE="gource.mp4"
-          URL="https://rawcdn.githack.com/$OWNER/$REPO/$COMMIT_SHA/$VIDEO_FILE"
+          URL="https://rawcdn.githack.com/$OWNER/$REPO/${{ steps.latest_sha.outputs.sha }}/$VIDEO_FILE"
           echo "Generated Gource URL: $URL"
 
           FILEPATH="README.md"
           START="GOURCE-VIDEO-START"
           END="GOURCE-VIDEO-END"
-          TEXT="$URL"
-          sudo apt-get install -y python3
-          python .github/scripts/marker.py "$FILEPATH" "$START" "$END" "$TEXT"
 
-      - name: Pull previous commit and push changes
+          sudo apt-get install -y python3
+          python .github/scripts/marker.py "$FILEPATH" "$START" "$END" "$URL"
+
+      - name: Commit and push updated README
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
@@ -102,7 +110,7 @@ jobs:
           git add README.md
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update gource history video"
+            git commit -m "Update README with latest gource video link"
             git pull --rebase origin main
             git push "https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF_NAME}
           else
